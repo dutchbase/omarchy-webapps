@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "dutchbase.webapps",
+  "name": "Web Apps",
+  "version": "1.0.0",
+  "author": "dutchbase",
+  "license": "MIT",
+  "description": "Launch your installed web apps from a themed Omarchy bar panel, with an in-panel picker for which apps to show.",
+  "kinds": ["bar-widget"],
+  "entryPoints": { "barWidget": "BarWidget.qml" },
+  "barWidget": {
+    "displayName": "Web Apps",
+    "description": "One bar button and one keyboard-summoned panel listing your web apps.",
+    "category": "Launcher",
+    "aliases": ["webapps", "web-apps", "pwa"],
+    "allowMultiple": false,
+    "defaultSection": "right",
+    "defaults": { "hiddenApps": [] }
+  }
+}
