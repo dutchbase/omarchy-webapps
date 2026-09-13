@@ -29,6 +29,10 @@ check("inline --app= detected", W.isWebAppExec("chromium --app=https://example.c
 check("plain app not detected", !W.isWebAppExec("foot"))
 check("empty not detected", !W.isWebAppExec(""))
 check("--app-identity is not --app=", !W.isWebAppExec("chromium --app-identity"))
+check("xdg-terminal-exec --app-id is not a web app", !W.isWebAppExec("xdg-terminal-exec --app-id=TUI.float -e bash -c \"dua i /\""))
+check("non-browser --app-id is not a web app", !W.isWebAppExec("myapp --app-id=123"))
+check("brave --app-id detected", W.isWebAppExec("brave-browser --profile-directory=Default --app-id=abc"))
+check("google-chrome --app detected", W.isWebAppExec("google-chrome --app=https://example.com"))
 
 section("Normalization")
 check("normalize returns record", (function () { var r = W.normalizeEntry(entry({})); return r && r.id === "App" && r.name === "App" })())

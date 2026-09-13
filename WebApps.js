@@ -2,10 +2,23 @@
 // unit-testable with Node (see test-webapps.js) and still importable from QML
 // as `import "WebApps.js" as WebApps`.
 
+// The browser binaries omarchy-launch-webapp supports, plus the Electron-based
+// Chromium forks that implement --app-id. A bare --app-id/--app flag is not
+// enough on its own: xdg-terminal-exec uses --app-id for terminal profiles.
+function isBrowserExec(exec) {
+  var tokens = ["chromium", "google-chrome", "microsoft-edge", "msedge", "brave", "chrome", "vivaldi", "opera", "helium"]
+  for (var i = 0; i < tokens.length; i++) {
+    var re = new RegExp("(^|[^a-z0-9-])" + tokens[i] + "([^a-z0-9]|$)")
+    if (re.test(exec)) return true
+  }
+  return false
+}
+
 function isWebAppExec(execString) {
   var exec = String(execString || "")
   if (exec.indexOf("omarchy-launch-webapp") >= 0) return true
   if (exec.indexOf("omarchy-webapp-handler") >= 0) return true
+  if (!isBrowserExec(exec)) return false
   if (exec.indexOf("--app-id=") >= 0) return true
   if (/(^|\s)"?--app=/.test(exec)) return true
   return false
