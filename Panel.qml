@@ -360,7 +360,10 @@ Panel {
             ? Style.selectedFillFor(root.contentForeground, root.accentColor)
             : (launcherHover.hovered ? Style.hoverFillFor(root.contentForeground, root.accentColor) : "transparent")
 
-          Behavior on color { ColorAnimation { duration: 100 } }
+          Behavior on color {
+            enabled: !root.bar || root.bar.foregroundAnimationEnabled
+            ColorAnimation { duration: 100 }
+          }
 
           Row {
             anchors.fill: parent
@@ -439,7 +442,10 @@ Panel {
             ? Style.selectedFillFor(root.contentForeground, root.accentColor)
             : (settingsHover.hovered ? Style.hoverFillFor(root.contentForeground, root.accentColor) : "transparent")
 
-          Behavior on color { ColorAnimation { duration: 100 } }
+          Behavior on color {
+            enabled: !root.bar || root.bar.foregroundAnimationEnabled
+            ColorAnimation { duration: 100 }
+          }
 
           Row {
             anchors.fill: parent
