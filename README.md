@@ -50,6 +50,24 @@ Ordinary native apps don't show up.
 The picker writes a `hiddenApps` list to the widget's entry in
 `~/.config/omarchy/shell.json`. You never have to edit it by hand.
 
+## If a web app doesn't show up
+
+The panel lists whatever launchers exist in `~/.local/share/applications`, so
+two things can hide an app:
+
+1. It's switched off in the picker. Open the gear and turn it back on, or hit
+   "Show all".
+2. Its launcher was never created. `omarchy-webapp-install` aborts when it can't
+   fetch a favicon and you leave the icon prompt blank, so no `.desktop` file is
+   written and there's nothing to list. Give it a fallback icon and it works:
+
+   ```bash
+   omarchy-webapp-install "Site Name" "https://example.com" "web-browser"
+   ```
+
+   Or, in the interactive installer, type a name like `web-browser` at the
+   "Icon URL/name" prompt instead of pressing enter.
+
 ## Under the hood
 
 Three files do the work:
