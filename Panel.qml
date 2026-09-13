@@ -137,14 +137,16 @@ Panel {
     return root.hiddenApps.indexOf(app.id) < 0
   }
 
+  // Returns an empty string when no icon resolves, so the delegate falls back to
+  // its web glyph instead of a generic app icon. Web apps installed without a
+  // detected favicon are common, and they should still look intentional.
   function iconSource(icon) {
     var value = String(icon || "")
-    if (value.length === 0) return Quickshell.iconPath("application-x-executable", true)
+    if (value.length === 0) return ""
     if (value.indexOf("file://") === 0 || value.indexOf("image://") === 0) return value
     if (value.charAt(0) === "/") return Util.fileUrl(value)
     var themed = Quickshell.iconPath(value, true)
-    if (themed.length > 0) return themed
-    return Quickshell.iconPath("application-x-executable", true)
+    return themed.length > 0 ? themed : ""
   }
 
   onQueryChanged: {
@@ -435,15 +437,31 @@ Panel {
               anchors.rightMargin: Style.space(10)
               spacing: Style.space(10)
 
-              Image {
+              Item {
                 anchors.verticalCenter: parent.verticalCenter
                 width: Style.space(22)
                 height: Style.space(22)
-                sourceSize.width: width * (Screen.devicePixelRatio || 1)
-                sourceSize.height: height * (Screen.devicePixelRatio || 1)
-                fillMode: Image.PreserveAspectFit
-                asynchronous: true
-                source: root.iconSource(launcherRow.modelData.icon)
+
+                Image {
+                  id: launcherIcon
+                  anchors.fill: parent
+                  sourceSize.width: width * (Screen.devicePixelRatio || 1)
+                  sourceSize.height: height * (Screen.devicePixelRatio || 1)
+                  fillMode: Image.PreserveAspectFit
+                  asynchronous: true
+                  source: root.iconSource(launcherRow.modelData.icon)
+                }
+
+                Text {
+                  anchors.fill: parent
+                  visible: launcherIcon.status !== Image.Ready
+                  text: "󰖟"
+                  horizontalAlignment: Text.AlignHCenter
+                  verticalAlignment: Text.AlignVCenter
+                  color: Qt.darker(root.contentForeground, 1.5)
+                  font.family: root.contentFontFamily
+                  font.pixelSize: Style.font.iconLarge
+                }
               }
 
               Text {
@@ -517,17 +535,33 @@ Panel {
               anchors.rightMargin: Style.space(10)
               spacing: Style.space(10)
 
+            Item {
+              anchors.verticalCenter: parent.verticalCenter
+              width: Style.space(22)
+              height: Style.space(22)
+              opacity: settingsRow.shown ? 1 : 0.55
+
               Image {
-                anchors.verticalCenter: parent.verticalCenter
-                width: Style.space(22)
-                height: Style.space(22)
+                id: settingsIcon
+                anchors.fill: parent
                 sourceSize.width: width * (Screen.devicePixelRatio || 1)
                 sourceSize.height: height * (Screen.devicePixelRatio || 1)
                 fillMode: Image.PreserveAspectFit
                 asynchronous: true
-                opacity: settingsRow.shown ? 1 : 0.55
                 source: root.iconSource(settingsRow.modelData.icon)
               }
+
+              Text {
+                anchors.fill: parent
+                visible: settingsIcon.status !== Image.Ready
+                text: "󰖟"
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+                color: Qt.darker(root.contentForeground, 1.5)
+                font.family: root.contentFontFamily
+                font.pixelSize: Style.font.iconLarge
+              }
+            }
 
               Text {
                 anchors.verticalCenter: parent.verticalCenter

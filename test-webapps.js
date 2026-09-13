@@ -50,6 +50,7 @@ check("noDisplay filtered", W.normalizeEntry(entry({ noDisplay: true })) === nul
 check("non-webapp filtered", W.normalizeEntry(entry({ execString: "foot" })) === null)
 check("id-less filtered", W.normalizeEntry(entry({ id: "" })) === null)
 check("name falls back to id", W.normalizeEntry(entry({ name: "", id: "Foo" })).name === "Foo")
+check("iconless entry is kept", (function () { var r = W.normalizeEntry(entry({ icon: "" })); return r !== null && r.icon === "" })())
 
 section("Collect & sort")
 var collected = W.collectWebApps([
@@ -61,6 +62,10 @@ var collected = W.collectWebApps([
 ])
 check("dedupes by id", collected.length === 3, "got " + collected.length)
 check("sorts by name case-insensitively", collected.map(function (a) { return a.name }).join(",") === "WhatsApp,X,YouTube")
+var iconless = W.collectWebApps([entry({ id: "NoIcon", name: "NoIcon", icon: "" })])
+check("collect keeps an iconless entry", iconless.length === 1 && iconless[0].icon === "")
+check("iconless entry stays visible", W.visibleWebApps(iconless, [], "").length === 1)
+check("iconless entry is toggleable", W.toggleHidden([], "NoIcon").join() === "NoIcon")
 
 section("Filtering")
 var apps = collected
