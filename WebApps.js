@@ -2,25 +2,68 @@
 // unit-testable with Node (see test-webapps.js) and still importable from QML
 // as `import "WebApps.js" as WebApps`.
 
-// The browser binaries omarchy-launch-webapp supports, plus the Electron-based
-// Chromium forks that implement --app-id. A bare --app-id/--app flag is not
-// enough on its own: xdg-terminal-exec uses --app-id for terminal profiles.
-function isBrowserExec(exec) {
-  var tokens = ["chromium", "google-chrome", "microsoft-edge", "msedge", "brave", "chrome", "vivaldi", "opera", "helium"]
-  for (var i = 0; i < tokens.length; i++) {
-    var re = new RegExp("(^|[^a-z0-9-])" + tokens[i] + "([^a-z0-9]|$)")
-    if (re.test(exec)) return true
+var browserExecutable = /^(chromium(?:-browser)?|google-chrome(?:-(?:stable|beta|unstable))?|microsoft-edge(?:-(?:stable|beta|dev))?|msedge|brave(?:-browser)?(?:-(?:stable|beta|nightly))?|chrome|vivaldi(?:-(?:stable|snapshot))?|opera(?:-(?:stable|beta|developer))?|helium(?:-browser)?)$/
+
+function execTokens(exec) {
+  var out = []
+  var token = ""
+  var quote = ""
+  var escaping = false
+  for (var i = 0; i < exec.length; i++) {
+    var ch = exec.charAt(i)
+    if (escaping) { token += ch; escaping = false; continue }
+    if (ch === "\\") { escaping = true; continue }
+    if (quote) {
+      if (ch === quote) quote = ""
+      else token += ch
+      continue
+    }
+    if (ch === "\"" || ch === "'") { quote = ch; continue }
+    if (/\s/.test(ch)) {
+      if (token) { out.push(token); token = "" }
+    } else token += ch
   }
-  return false
+  if (escaping) token += "\\"
+  if (token) out.push(token)
+  return out
+}
+
+function basename(value) {
+  var parts = String(value || "").split("/")
+  return parts[parts.length - 1].toLowerCase()
+}
+
+function commandIndex(tokens) {
+  var index = 0
+  while (index < tokens.length) {
+    var command = basename(tokens[index])
+    if (command === "env") {
+      index++
+      while (index < tokens.length && (tokens[index].charAt(0) === "-" || /^[A-Za-z_][A-Za-z0-9_]*=/.test(tokens[index]))) index++
+      continue
+    }
+    if (command === "setsid" || command === "uwsm-app") {
+      index++
+      while (index < tokens.length && tokens[index].charAt(0) === "-") index++
+      continue
+    }
+    return index
+  }
+  return -1
 }
 
 function isWebAppExec(execString) {
   var exec = String(execString || "")
-  if (exec.indexOf("omarchy-launch-webapp") >= 0) return true
-  if (exec.indexOf("omarchy-webapp-handler") >= 0) return true
-  if (!isBrowserExec(exec)) return false
-  if (exec.indexOf("--app-id=") >= 0) return true
-  if (/(^|\s)"?--app=/.test(exec)) return true
+  var tokens = execTokens(exec)
+  var index = commandIndex(tokens)
+  if (index < 0) return false
+  var command = basename(tokens[index])
+  if (command === "omarchy-launch-webapp" || command.indexOf("omarchy-webapp-handler-") === 0) return true
+  if (!browserExecutable.test(command)) return false
+  for (var i = index + 1; i < tokens.length; i++) {
+    if (tokens[i] === "--app" || tokens[i] === "--app-id") return true
+    if (/^--app(?:-id)?=/.test(tokens[i])) return true
+  }
   return false
 }
 

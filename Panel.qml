@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Window
 import Quickshell
@@ -136,7 +138,11 @@ Panel {
   onAllAppsChanged: {
     var pruned = WebApps.pruneHidden(root.hiddenApps, root.allApps)
     if (pruned.length !== root.hiddenApps.length) root.persistHidden(pruned)
+  }
+
+  onActiveAppsChanged: {
     if (root.cursor >= root.activeApps.length) root.cursor = Math.max(0, root.activeApps.length - 1)
+    Qt.callLater(root.revealCursor)
   }
 
   function handleKey(event) {
@@ -221,12 +227,12 @@ Panel {
             visible: root.mode === 1
             anchors.verticalCenter: parent.verticalCenter
             text: "Show all"
-            color: showAllMouse.hovered
+            color: showAllMouse.containsMouse
               ? Style.hoverStateColor(root.contentForeground, root.accentColor)
               : Qt.darker(root.contentForeground, 1.4)
             font.family: root.contentFontFamily
             font.pixelSize: Style.font.caption
-            font.underline: showAllMouse.hovered
+            font.underline: showAllMouse.containsMouse
 
             MouseArea {
               id: showAllMouse
@@ -243,12 +249,12 @@ Panel {
             visible: root.mode === 1
             anchors.verticalCenter: parent.verticalCenter
             text: "Hide all"
-            color: hideAllMouse.hovered
+            color: hideAllMouse.containsMouse
               ? Style.hoverStateColor(root.contentForeground, root.accentColor)
               : Qt.darker(root.contentForeground, 1.4)
             font.family: root.contentFontFamily
             font.pixelSize: Style.font.caption
-            font.underline: hideAllMouse.hovered
+            font.underline: hideAllMouse.containsMouse
 
             MouseArea {
               id: hideAllMouse
@@ -356,9 +362,9 @@ Panel {
           width: appList.width
           height: root.rowHeight
           radius: Style.cornerRadius
-          color: index === root.cursor
+          color: launcherRow.index === root.cursor
             ? Style.selectedFillFor(root.contentForeground, root.accentColor)
-            : (launcherHover.hovered ? Style.hoverFillFor(root.contentForeground, root.accentColor) : "transparent")
+            : (launcherHover.containsMouse ? Style.hoverFillFor(root.contentForeground, root.accentColor) : Util.alpha(root.contentForeground, 0))
 
           Behavior on color {
             enabled: !root.bar || root.bar.foregroundAnimationEnabled
@@ -386,7 +392,7 @@ Panel {
               anchors.verticalCenter: parent.verticalCenter
               width: parent.width - x
               text: launcherRow.modelData.name
-              color: index === root.cursor
+              color: launcherRow.index === root.cursor
                 ? Style.selectedStateColor(root.contentForeground, root.accentColor)
                 : root.contentForeground
               font.family: root.contentFontFamily
@@ -396,12 +402,12 @@ Panel {
           }
 
           Rectangle {
-            visible: index === root.cursor
+            visible: launcherRow.index === root.cursor
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
-            width: Math.max(2, Style.space(2))
+            width: Style.space(2)
             height: parent.height - Style.space(14)
-            radius: width / 2
+            radius: Style.cornerRadius
             color: Style.selectedStateColor(root.contentForeground, root.accentColor)
           }
 
@@ -438,9 +444,9 @@ Panel {
           width: settingsList.width
           height: root.rowHeight
           radius: Style.cornerRadius
-          color: index === root.cursor
+          color: settingsRow.index === root.cursor
             ? Style.selectedFillFor(root.contentForeground, root.accentColor)
-            : (settingsHover.hovered ? Style.hoverFillFor(root.contentForeground, root.accentColor) : "transparent")
+            : (settingsHover.containsMouse ? Style.hoverFillFor(root.contentForeground, root.accentColor) : Util.alpha(root.contentForeground, 0))
 
           Behavior on color {
             enabled: !root.bar || root.bar.foregroundAnimationEnabled
@@ -489,12 +495,12 @@ Panel {
           }
 
           Rectangle {
-            visible: index === root.cursor
+            visible: settingsRow.index === root.cursor
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
-            width: Math.max(2, Style.space(2))
+            width: Style.space(2)
             height: parent.height - Style.space(14)
-            radius: width / 2
+            radius: Style.cornerRadius
             color: Style.selectedStateColor(root.contentForeground, root.accentColor)
           }
 
@@ -545,7 +551,7 @@ Panel {
         width: parent.width
         horizontalAlignment: Text.AlignHCenter
         text: root.mode === 0
-          ? "↑↓ navigate   ↵ open   type to filter   esc close"
+          ? "↑↓ navigate   ↵ open   type to filter   esc clear/close"
           : "↑↓ navigate   space toggle   tab/esc back"
         color: Qt.darker(root.contentForeground, 1.7)
         font.family: root.contentFontFamily

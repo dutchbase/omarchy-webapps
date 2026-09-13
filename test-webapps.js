@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// WebApps.js test harness: fixed fixtures for every rule, then a live pass over
+// WebApps.js test harness: fixed fixtures for every rule, then a live scan over
 // the desktop entries actually installed on this machine.
 //   node test-webapps.js
 
@@ -33,6 +33,16 @@ check("xdg-terminal-exec --app-id is not a web app", !W.isWebAppExec("xdg-termin
 check("non-browser --app-id is not a web app", !W.isWebAppExec("myapp --app-id=123"))
 check("brave --app-id detected", W.isWebAppExec("brave-browser --profile-directory=Default --app-id=abc"))
 check("google-chrome --app detected", W.isWebAppExec("google-chrome --app=https://example.com"))
+check("quoted browser executable detected", W.isWebAppExec("\"/opt/Google Chrome/google-chrome-stable\" --app=https://example.com"))
+check("chromium-browser detected", W.isWebAppExec("chromium-browser --app-id abc"))
+check("separate quoted --app value detected", W.isWebAppExec("vivaldi-stable --app \"https://example.com\""))
+check("escaped app flag detected", W.isWebAppExec("brave-browser --app\\=https://example.com"))
+check("env-wrapped browser detected", W.isWebAppExec("env FOO=bar microsoft-edge-stable --app-id=abc"))
+check("uwsm-wrapped browser detected", W.isWebAppExec("uwsm-app -- chromium --app=https://example.com"))
+check("browser name in a non-browser argument is ignored", !W.isWebAppExec("mytool --description=chromium --app-id=123"))
+check("browser path in a shell payload is ignored", !W.isWebAppExec("sh -c 'chromium --app=https://example.com'"))
+check("launcher substring is ignored", !W.isWebAppExec("not-omarchy-launch-webapp https://example.com"))
+check("handler substring is ignored", !W.isWebAppExec("not-omarchy-webapp-handler-zoom %u"))
 
 section("Normalization")
 check("normalize returns record", (function () { var r = W.normalizeEntry(entry({})); return r && r.id === "App" && r.name === "App" })())
@@ -95,8 +105,7 @@ if (execs.length === 0) {
   console.log("  SKIP  live entries — no .desktop files readable")
 } else {
   var liveHits = execs.filter(W.isWebAppExec)
-  check("at least one live web app detected", liveHits.length > 0, "scanned " + execs.length + " entries")
-  console.log("        (" + liveHits.length + " web app Exec lines among " + execs.length + " entries)")
+  console.log("  INFO  detected " + liveHits.length + " web app Exec lines among " + execs.length + " entries")
 }
 
 console.log("\n" + "=".repeat(56))

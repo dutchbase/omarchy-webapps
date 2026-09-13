@@ -27,7 +27,8 @@ key — `SUPER + CTRL + SHIFT + W` works well.
 ## Usage
 
 - Click the globe in the bar, or press the hotkey, to open the panel.
-- Type to filter, `↑`/`↓` to move, `↵` to launch, `esc` to close.
+- Type to filter, `↑`/`↓` to move, and `↵` to launch. `esc` clears an active
+  filter first, then closes the panel.
 - Press the gear (or `Tab`) to choose which web apps appear. "Show all" and
   "Hide all" are one click away; every change is saved immediately.
 
