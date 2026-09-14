@@ -143,6 +143,7 @@ Panel {
   function iconSource(icon) {
     var value = String(icon || "")
     if (value.length === 0) return ""
+    if (/^https?:\/\//i.test(value)) return ""
     if (value.indexOf("file://") === 0 || value.indexOf("image://") === 0) return value
     if (value.charAt(0) === "/") return Util.fileUrl(value)
     var themed = Quickshell.iconPath(value, true)
@@ -270,6 +271,7 @@ Panel {
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
             text: root.mode === 0 ? "󰖟" : "󰒓"
+            textFormat: Text.PlainText
             color: root.contentForeground
             font.family: root.contentFontFamily
             font.pixelSize: Style.font.display
@@ -286,6 +288,7 @@ Panel {
               visible: root.mode === 1
               anchors.verticalCenter: parent.verticalCenter
               text: "Show all"
+              textFormat: Text.PlainText
               color: showAllMouse.containsMouse
                 ? Style.hoverStateColor(root.contentForeground, root.accentColor)
                 : Qt.darker(root.contentForeground, 1.4)
@@ -308,6 +311,7 @@ Panel {
               visible: root.mode === 1
               anchors.verticalCenter: parent.verticalCenter
               text: "Hide all"
+              textFormat: Text.PlainText
               color: hideAllMouse.containsMouse
                 ? Style.hoverStateColor(root.contentForeground, root.accentColor)
                 : Qt.darker(root.contentForeground, 1.4)
@@ -348,6 +352,7 @@ Panel {
             Text {
               width: parent.width
               text: root.mode === 0 ? "Web Apps" : "Choose web apps"
+              textFormat: Text.PlainText
               color: root.contentForeground
               font.family: root.contentFontFamily
               font.pixelSize: Style.font.title
@@ -360,6 +365,7 @@ Panel {
               text: root.mode === 0
                 ? WebApps.visibleCount(root.allApps, root.hiddenApps) + " shown"
                 : "Toggle which apps appear"
+              textFormat: Text.PlainText
               color: Qt.darker(root.contentForeground, 1.4)
               font.family: root.contentFontFamily
               font.pixelSize: Style.font.caption
@@ -384,6 +390,7 @@ Panel {
             anchors.rightMargin: Style.space(8)
             anchors.verticalCenter: parent.verticalCenter
             text: root.query === "" ? "Search web apps…" : root.query
+            textFormat: Text.PlainText
             color: root.contentForeground
             opacity: root.query ? 1 : 0.58
             font.family: root.contentFontFamily
@@ -396,6 +403,7 @@ Panel {
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
             text: root.listedApps.length + " / " + root.allApps.length
+            textFormat: Text.PlainText
             color: Qt.darker(root.contentForeground, 1.5)
             font.family: root.contentFontFamily
             font.pixelSize: Style.font.caption
@@ -456,6 +464,7 @@ Panel {
                   anchors.fill: parent
                   visible: launcherIcon.status !== Image.Ready
                   text: "󰖟"
+                  textFormat: Text.PlainText
                   horizontalAlignment: Text.AlignHCenter
                   verticalAlignment: Text.AlignVCenter
                   color: Qt.darker(root.contentForeground, 1.5)
@@ -468,6 +477,7 @@ Panel {
                 anchors.verticalCenter: parent.verticalCenter
                 width: parent.width - x
                 text: launcherRow.modelData.name
+                textFormat: Text.PlainText
                 color: launcherRow.index === root.cursor
                   ? Style.selectedStateColor(root.contentForeground, root.accentColor)
                   : root.contentForeground
@@ -555,6 +565,7 @@ Panel {
                 anchors.fill: parent
                 visible: settingsIcon.status !== Image.Ready
                 text: "󰖟"
+                textFormat: Text.PlainText
                 horizontalAlignment: Text.AlignHCenter
                 verticalAlignment: Text.AlignVCenter
                 color: Qt.darker(root.contentForeground, 1.5)
@@ -567,6 +578,7 @@ Panel {
                 anchors.verticalCenter: parent.verticalCenter
                 width: parent.width - x - visibilitySwitch.width - Style.space(10)
                 text: settingsRow.modelData.name
+                textFormat: Text.PlainText
                 color: root.contentForeground
                 opacity: settingsRow.shown ? 1 : 0.55
                 font.family: root.contentFontFamily
@@ -622,6 +634,7 @@ Panel {
             Text {
               anchors.horizontalCenter: parent.horizontalCenter
               text: "󰖟"
+              textFormat: Text.PlainText
               color: Qt.darker(root.contentForeground, 1.6)
               font.family: root.contentFontFamily
               font.pixelSize: Style.font.display
@@ -632,6 +645,7 @@ Panel {
               text: root.allApps.length === 0
                 ? "No web apps found — install one from the Omarchy menu"
                 : "No web apps match"
+              textFormat: Text.PlainText
               color: Qt.darker(root.contentForeground, 1.4)
               font.family: root.contentFontFamily
               font.pixelSize: Style.font.body
@@ -647,6 +661,7 @@ Panel {
           text: root.mode === 0
             ? "↑↓ navigate   ↵ open   type to filter   esc clear/close"
             : "↑↓ navigate   space toggle   tab/esc back"
+          textFormat: Text.PlainText
           color: Qt.darker(root.contentForeground, 1.7)
           font.family: root.contentFontFamily
           font.pixelSize: Style.font.caption
