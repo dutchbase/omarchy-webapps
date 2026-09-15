@@ -45,6 +45,16 @@ Any desktop entry Omarchy launches as a web app (`omarchy-launch-webapp`,
 `--app=` on Chromium, Chrome, Brave, Edge, Vivaldi, Opera, and Helium).
 Ordinary native apps don't show up.
 
+## Keyboard shortcuts in the list
+
+If a web app's `.desktop` file has an `X-Omarchy-Shortcut=` line (for example
+`X-Omarchy-Shortcut=SUPER SHIFT I`), its assigned key combo shows on the right
+of that app's row. This panel only reads the field — it doesn't assign or
+change shortcuts itself, and most web apps won't have one set. Anything that
+writes `X-Omarchy-Shortcut=` into the `.desktop` file (by hand, or a separate
+tool) is picked up automatically; the panel re-reads the file on change while
+it's open.
+
 ## Where the setting lives
 
 The picker writes a `hiddenApps` list to the widget's entry in

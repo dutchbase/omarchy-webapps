@@ -166,6 +166,37 @@ function pruneHidden(hiddenIds, apps) {
   return out
 }
 
+// Mirrors the bash `canonical_combo` in omarchy-webapp-shortcut: modifiers in
+// a fixed order, "+" or bare spaces between tokens, last non-modifier token
+// wins as the key. Returns "" when no key token is present.
+function canonicalCombo(raw) {
+  var tokens = String(raw || "").split(/[+\s]+/).filter(function (t) { return t.length > 0 })
+  var seen = {}
+  var key = ""
+  for (var i = 0; i < tokens.length; i++) {
+    var up = tokens[i].toUpperCase()
+    if (up === "SUPER" || up === "WIN" || up === "MOD") seen.SUPER = true
+    else if (up === "CTRL" || up === "CONTROL") seen.CTRL = true
+    else if (up === "ALT" || up === "MOD1") seen.ALT = true
+    else if (up === "SHIFT") seen.SHIFT = true
+    else key = up
+  }
+  if (!key) return ""
+  var mods = ["SUPER", "CTRL", "ALT", "SHIFT"]
+  var out = ""
+  for (var j = 0; j < mods.length; j++) if (seen[mods[j]]) out += mods[j] + " + "
+  return out + key
+}
+
+// Reads the `X-Omarchy-Shortcut=` line a raw .desktop file may carry (written
+// by the separate omarchy-webapp-shortcut tool) and canonicalizes it for
+// display. Returns "" when the key is absent or unparseable.
+function shortcutFromDesktopText(text) {
+  var m = String(text || "").match(/^X-Omarchy-Shortcut=(.*)$/m)
+  if (!m) return ""
+  return canonicalCombo(m[1])
+}
+
 function mergeSettings(current, changes) {
   var base = current && typeof current === "object" ? current : {}
   var next = {}
@@ -187,6 +218,8 @@ if (typeof module !== "undefined" && module.exports) {
     toggleHidden: toggleHidden,
     setAllHidden: setAllHidden,
     pruneHidden: pruneHidden,
+    canonicalCombo: canonicalCombo,
+    shortcutFromDesktopText: shortcutFromDesktopText,
     mergeSettings: mergeSettings
   }
 }

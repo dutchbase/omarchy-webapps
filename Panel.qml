@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Window
 import Quickshell
+import Quickshell.Io
 import Quickshell.Wayland
 import qs.Commons
 import qs.Ui
@@ -128,6 +129,15 @@ Panel {
     if (root.hostWidget && "settings" in root.hostWidget) root.hostWidget.settings = entry
     if (root.bar && root.bar.shell && typeof root.bar.shell.updateEntryInline === "function")
       root.bar.shell.updateEntryInline(root.moduleName, entry)
+  }
+
+  readonly property string homeDir: Quickshell.env("HOME")
+
+  // Path of the .desktop file a web app was normalized from. Web apps this
+  // panel lists always come from ~/.local/share/applications (see README),
+  // so the shortcut lookup only ever needs to read there.
+  function desktopFilePath(id) {
+    return root.homeDir + "/.local/share/applications/" + id + ".desktop"
   }
 
   function showAll() { root.persistHidden([]) }
@@ -426,6 +436,7 @@ Panel {
             id: launcherRow
             required property var modelData
             required property int index
+            property string shortcutText: ""
 
             width: appList.width
             height: root.rowHeight
@@ -437,6 +448,18 @@ Panel {
             Behavior on color {
               enabled: !root.bar || root.bar.foregroundAnimationEnabled
               ColorAnimation { duration: 100 }
+            }
+
+            // Best-effort: reads X-Omarchy-Shortcut= from the app's own
+            // .desktop file, if a key was assigned there. Absent for most
+            // apps — this panel has no way to assign one itself.
+            FileView {
+              id: shortcutFile
+              path: root.desktopFilePath(launcherRow.modelData.id)
+              watchChanges: true
+              printErrors: false
+              onLoaded: launcherRow.shortcutText = WebApps.shortcutFromDesktopText(text())
+              onLoadFailed: launcherRow.shortcutText = ""
             }
 
             Row {
@@ -475,7 +498,7 @@ Panel {
 
               Text {
                 anchors.verticalCenter: parent.verticalCenter
-                width: parent.width - x
+                width: parent.width - x - (shortcutLabel.visible ? shortcutLabel.width + Style.space(10) : 0)
                 text: launcherRow.modelData.name
                 textFormat: Text.PlainText
                 color: launcherRow.index === root.cursor
@@ -485,6 +508,19 @@ Panel {
                 font.pixelSize: Style.font.body
                 elide: Text.ElideRight
               }
+            }
+
+            Text {
+              id: shortcutLabel
+              anchors.right: parent.right
+              anchors.rightMargin: Style.space(10)
+              anchors.verticalCenter: parent.verticalCenter
+              visible: launcherRow.shortcutText !== ""
+              text: launcherRow.shortcutText
+              textFormat: Text.PlainText
+              color: Qt.darker(root.contentForeground, 1.4)
+              font.family: root.contentFontFamily
+              font.pixelSize: Style.font.caption
             }
 
             Rectangle {
