@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Window
 import Quickshell
+import Quickshell.Io
 import Quickshell.Wayland
 import qs.Commons
 import qs.Ui
@@ -60,12 +61,43 @@ Panel {
   readonly property var listedApps: WebApps.visibleWebApps(allApps, hiddenApps, query)
   readonly property var activeApps: mode === 0 ? listedApps : allApps
 
+  // id -> combo string, matched from a `hyprctl binds -j` snapshot against
+  // each app's name (see WebApps.shortcutsForApps). Refreshed each time the
+  // panel opens; reassigned wholesale so bindings that read it stay reactive.
+  property var shortcuts: ({})
+
+  function shortcutTextFor(app) {
+    return app ? (root.shortcuts[app.id] || "") : ""
+  }
+
+  readonly property var conflictedShortcutIds: WebApps.shortcutConflicts(root.shortcuts)
+
+  function isShortcutConflict(app) {
+    return app ? root.conflictedShortcutIds[app.id] === true : false
+  }
+
+  function refreshShortcuts() { shortcutsProc.running = true }
+
+  Process {
+    id: shortcutsProc
+    command: ["hyprctl", "binds", "-j"]
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        var binds = []
+        try { binds = JSON.parse(text) } catch (e) { binds = [] }
+        root.shortcuts = WebApps.shortcutsForApps(binds, root.allApps)
+      }
+    }
+  }
+
   function open() {
     root.mode = 0
     root.query = ""
     root.cursor = 0
     root.entryRevision++
     root.controller.show()
+    root.refreshShortcuts()
     if (root.bar && typeof root.bar.requestPopout === "function") root.bar.requestPopout(root.barIdentity)
     Qt.callLater(function () { if (keyCatcher) keyCatcher.forceActiveFocus() })
   }
@@ -426,6 +458,8 @@ Panel {
             id: launcherRow
             required property var modelData
             required property int index
+            readonly property string shortcutText: root.shortcutTextFor(launcherRow.modelData)
+            readonly property bool shortcutConflict: root.isShortcutConflict(launcherRow.modelData)
 
             width: appList.width
             height: root.rowHeight
@@ -475,7 +509,7 @@ Panel {
 
               Text {
                 anchors.verticalCenter: parent.verticalCenter
-                width: parent.width - x
+                width: parent.width - x - (shortcutLabel.visible ? shortcutLabel.width + Style.space(10) : 0)
                 text: launcherRow.modelData.name
                 textFormat: Text.PlainText
                 color: launcherRow.index === root.cursor
@@ -484,6 +518,33 @@ Panel {
                 font.family: root.contentFontFamily
                 font.pixelSize: Style.font.body
                 elide: Text.ElideRight
+              }
+            }
+
+            Text {
+              id: shortcutLabel
+              anchors.right: parent.right
+              anchors.rightMargin: Style.space(10)
+              anchors.verticalCenter: parent.verticalCenter
+              visible: launcherRow.shortcutText !== ""
+              text: launcherRow.shortcutText
+              textFormat: Text.PlainText
+              color: launcherRow.shortcutConflict ? Color.urgent : Qt.darker(root.contentForeground, 1.4)
+              font.family: root.contentFontFamily
+              font.pixelSize: Style.font.caption
+
+              MouseArea {
+                id: shortcutHover
+                anchors.fill: parent
+                anchors.margins: -Style.space(4)
+                hoverEnabled: launcherRow.shortcutConflict
+                cursorShape: launcherRow.shortcutConflict ? Qt.WhatsThisCursor : Qt.ArrowCursor
+
+                PanelToolTip {
+                  visible: launcherRow.shortcutConflict && shortcutHover.containsMouse
+                  text: "Also assigned to another web app — only one will actually launch"
+                  fontFamily: root.contentFontFamily
+                }
               }
             }
 

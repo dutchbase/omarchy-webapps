@@ -86,6 +86,49 @@ check("hide all returns every id", W.setAllHidden(apps, true).length === 3)
 check("show all returns empty", W.setAllHidden(apps, false).length === 0)
 check("prune drops stale ids", W.pruneHidden(["X", "Gone"], apps).join() === "X")
 
+section("Shortcut display")
+function bind(over) {
+  var base = { key: "I", modmask: 64, description: "App" }
+  for (var k in over) base[k] = over[k]
+  return base
+}
+check("comboFromBind formats a single modifier", W.comboFromBind(bind({ modmask: 64 })) === "SUPER + I")
+check("comboFromBind orders modifiers SUPER/CTRL/ALT/SHIFT", W.comboFromBind(bind({ modmask: 64 + 1 + 4 + 8 })) === "SUPER + CTRL + ALT + SHIFT + I")
+check("comboFromBind handles no modifiers", W.comboFromBind(bind({ modmask: 0 })) === "I")
+check("comboFromBind uppercases the key", W.comboFromBind(bind({ key: "return", modmask: 64 })) === "SUPER + RETURN")
+check("comboFromBind handles a missing bind", W.comboFromBind(null) === "")
+check("comboFromBind handles a keyless bind", W.comboFromBind({ modmask: 64 }) === "")
+
+var binds = [
+  bind({ key: "K", modmask: 64 + 1, description: "Apple Music" }),
+  bind({ key: "RETURN", modmask: 64 + 1, description: "Browser" }),
+  bind({ key: "B", modmask: 64 + 1, description: "Browser" })
+]
+check("shortcutForApp matches by exact description", W.shortcutForApp(binds, "Apple Music") === "SUPER + SHIFT + K")
+check("shortcutForApp returns empty for no match", W.shortcutForApp(binds, "Discord") === "")
+check("shortcutForApp returns empty for no name", W.shortcutForApp(binds, "") === "")
+check("shortcutForApp handles no binds", W.shortcutForApp(null, "Apple Music") === "")
+check("shortcutForApp takes the first of duplicate descriptions", W.shortcutForApp(binds, "Browser") === "SUPER + SHIFT + RETURN")
+
+var shortcutApps = [{ id: "am", name: "Apple Music" }, { id: "disc", name: "Discord" }]
+check("shortcutsForApps maps only apps with a live bind", (function () {
+  var m = W.shortcutsForApps(binds, shortcutApps)
+  return m.am === "SUPER + SHIFT + K" && m.disc === undefined
+})())
+check("shortcutsForApps handles no apps", Object.keys(W.shortcutsForApps(binds, [])).length === 0)
+
+check("shortcutConflicts flags a shared combo", (function () {
+  var c = W.shortcutConflicts({ A: "SUPER + I", B: "SUPER + I", C: "SUPER + L" })
+  return c.A === true && c.B === true && !c.C
+})())
+check("shortcutConflicts flags no one when combos differ", Object.keys(W.shortcutConflicts({ A: "SUPER + I", B: "SUPER + L" })).length === 0)
+check("shortcutConflicts ignores empty combos", Object.keys(W.shortcutConflicts({ A: "", B: "" })).length === 0)
+check("shortcutConflicts handles no input", Object.keys(W.shortcutConflicts()).length === 0)
+check("shortcutConflicts handles a three-way collision", (function () {
+  var c = W.shortcutConflicts({ A: "SUPER + I", B: "SUPER + I", C: "SUPER + I" })
+  return c.A === true && c.B === true && c.C === true
+})())
+
 section("Settings merge")
 check("merge replaces the patched key", W.mergeSettings({ hiddenApps: ["X"], showSearch: true }, { hiddenApps: ["Y"], id: "ghost" }).hiddenApps.join() === "Y")
 check("merge preserves unrelated keys", W.mergeSettings({ hiddenApps: ["X"], showSearch: true }, { hiddenApps: ["Y"] }).showSearch === true)

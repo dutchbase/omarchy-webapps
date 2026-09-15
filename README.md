@@ -45,6 +45,26 @@ Any desktop entry Omarchy launches as a web app (`omarchy-launch-webapp`,
 `--app=` on Chromium, Chrome, Brave, Edge, Vivaldi, Opera, and Helium).
 Ordinary native apps don't show up.
 
+## Keyboard shortcuts in the list
+
+If a web app has a live Hyprland keybinding, its key combo shows on the right
+of that app's row. This panel only reads and displays it — it doesn't assign
+or change shortcuts itself.
+
+It works by asking `hyprctl binds -j` for every currently bound key each time
+the panel opens, then matching each web app by name against a bind's
+description. That's a best-effort match (a bind whose description doesn't
+say the app's name verbatim won't be found), but it works regardless of what
+assigned the shortcut — Omarchy's own preinstalled webapp bindings, the
+[Keysmith](https://github.com/Ahmed-Sinkeat/keysmith) plugin, or a hand-written
+`o.bind(...)` in `~/.config/hypr/bindings.lua` all set the description to the
+app's name, so all three are picked up the same way.
+
+Nothing stops two web apps from ending up bound to the same combo, and
+Hyprland doesn't reject a duplicate bind — it fires every dispatcher on that
+key, so both would try to launch. If that happens, both rows show the
+shortcut in a warning color, and hovering either one explains why.
+
 ## Where the setting lives
 
 The picker writes a `hiddenApps` list to the widget's entry in
