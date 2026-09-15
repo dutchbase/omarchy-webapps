@@ -61,6 +61,29 @@ Panel {
   readonly property var listedApps: WebApps.visibleWebApps(allApps, hiddenApps, query)
   readonly property var activeApps: mode === 0 ? listedApps : allApps
 
+  // id -> canonicalized X-Omarchy-Shortcut=, read from each app's .desktop
+  // file by the reader Instantiator below. Reassigned wholesale (never
+  // mutated in place) so bindings that read it stay reactive.
+  property var shortcuts: ({})
+
+  function setShortcut(id, combo) {
+    var next = {}
+    for (var k in root.shortcuts) next[k] = root.shortcuts[k]
+    if (combo) next[id] = combo
+    else delete next[id]
+    root.shortcuts = next
+  }
+
+  function shortcutTextFor(app) {
+    return app ? (root.shortcuts[app.id] || "") : ""
+  }
+
+  readonly property var conflictedShortcutIds: WebApps.shortcutConflicts(root.shortcuts)
+
+  function isShortcutConflict(app) {
+    return app ? root.conflictedShortcutIds[app.id] === true : false
+  }
+
   function open() {
     root.mode = 0
     root.query = ""
@@ -170,9 +193,53 @@ Panel {
     function onValuesChanged() { root.entryRevision++ }
   }
 
+  // One FileView per known app, reading its .desktop file for a shortcut.
+  // Lives at the panel root (not per row) so shortcutTextFor/isShortcutConflict
+  // see every app, including ones hidden from the launcher list.
+  Instantiator {
+    model: root.allApps
+    delegate: QtObject {
+      id: shortcutReader
+      required property var modelData
+
+      property FileView file: FileView {
+        path: root.desktopFilePath(shortcutReader.modelData.id)
+        watchChanges: true
+        printErrors: false
+        onFileChanged: reload()
+        onLoaded: root.setShortcut(shortcutReader.modelData.id, WebApps.shortcutFromDesktopText(text()))
+        onLoadFailed: root.setShortcut(shortcutReader.modelData.id, "")
+      }
+
+      // The first read can race shell/plugin startup (same class of race the
+      // weather panel's locationFile works around) and land empty even
+      // though the .desktop file already has the field. One delayed reload
+      // self-corrects; a first read that was already fine is a no-op, since
+      // identical content sets the same shortcut again.
+      property Timer settleTimer: Timer {
+        interval: 1500
+        running: true
+        onTriggered: shortcutReader.file.reload()
+      }
+    }
+  }
+
   onAllAppsChanged: {
     var pruned = WebApps.pruneHidden(root.hiddenApps, root.allApps)
     if (pruned.length !== root.hiddenApps.length) root.persistHidden(pruned)
+
+    // Drop shortcuts for apps that no longer exist — an uninstalled app's
+    // stale entry would otherwise keep flagging a real conflict that isn't
+    // one anymore.
+    var present = {}
+    for (var i = 0; i < root.allApps.length; i++) present[root.allApps[i].id] = true
+    var nextShortcuts = {}
+    var shortcutsChanged = false
+    for (var id in root.shortcuts) {
+      if (present[id]) nextShortcuts[id] = root.shortcuts[id]
+      else shortcutsChanged = true
+    }
+    if (shortcutsChanged) root.shortcuts = nextShortcuts
   }
 
   onActiveAppsChanged: {
@@ -436,7 +503,8 @@ Panel {
             id: launcherRow
             required property var modelData
             required property int index
-            property string shortcutText: ""
+            readonly property string shortcutText: root.shortcutTextFor(launcherRow.modelData)
+            readonly property bool shortcutConflict: root.isShortcutConflict(launcherRow.modelData)
 
             width: appList.width
             height: root.rowHeight
@@ -448,18 +516,6 @@ Panel {
             Behavior on color {
               enabled: !root.bar || root.bar.foregroundAnimationEnabled
               ColorAnimation { duration: 100 }
-            }
-
-            // Best-effort: reads X-Omarchy-Shortcut= from the app's own
-            // .desktop file, if a key was assigned there. Absent for most
-            // apps — this panel has no way to assign one itself.
-            FileView {
-              id: shortcutFile
-              path: root.desktopFilePath(launcherRow.modelData.id)
-              watchChanges: true
-              printErrors: false
-              onLoaded: launcherRow.shortcutText = WebApps.shortcutFromDesktopText(text())
-              onLoadFailed: launcherRow.shortcutText = ""
             }
 
             Row {
@@ -518,9 +574,23 @@ Panel {
               visible: launcherRow.shortcutText !== ""
               text: launcherRow.shortcutText
               textFormat: Text.PlainText
-              color: Qt.darker(root.contentForeground, 1.4)
+              color: launcherRow.shortcutConflict ? Color.urgent : Qt.darker(root.contentForeground, 1.4)
               font.family: root.contentFontFamily
               font.pixelSize: Style.font.caption
+
+              MouseArea {
+                id: shortcutHover
+                anchors.fill: parent
+                anchors.margins: -Style.space(4)
+                hoverEnabled: launcherRow.shortcutConflict
+                cursorShape: launcherRow.shortcutConflict ? Qt.WhatsThisCursor : Qt.ArrowCursor
+
+                PanelToolTip {
+                  visible: launcherRow.shortcutConflict && shortcutHover.containsMouse
+                  text: "Also assigned to another web app — only one will actually launch"
+                  fontFamily: root.contentFontFamily
+                }
+              }
             }
 
             Rectangle {

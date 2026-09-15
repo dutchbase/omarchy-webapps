@@ -197,6 +197,26 @@ function shortcutFromDesktopText(text) {
   return canonicalCombo(m[1])
 }
 
+// Nothing here writes X-Omarchy-Shortcut=, so two web apps can independently
+// end up with the same combo. Hyprland doesn't reject a duplicate bind, it
+// fires every dispatcher on that key, so a shared combo is worth flagging
+// rather than shown as if both keys actually work. Returns the set of app
+// ids (as object keys) whose shortcut collides with another app's.
+function shortcutConflicts(shortcuts) {
+  var map = shortcuts || {}
+  var counts = {}
+  for (var id in map) {
+    var combo = map[id]
+    if (combo) counts[combo] = (counts[combo] || 0) + 1
+  }
+  var conflicted = {}
+  for (var id2 in map) {
+    var combo2 = map[id2]
+    if (combo2 && counts[combo2] > 1) conflicted[id2] = true
+  }
+  return conflicted
+}
+
 function mergeSettings(current, changes) {
   var base = current && typeof current === "object" ? current : {}
   var next = {}
@@ -220,6 +240,7 @@ if (typeof module !== "undefined" && module.exports) {
     pruneHidden: pruneHidden,
     canonicalCombo: canonicalCombo,
     shortcutFromDesktopText: shortcutFromDesktopText,
+    shortcutConflicts: shortcutConflicts,
     mergeSettings: mergeSettings
   }
 }

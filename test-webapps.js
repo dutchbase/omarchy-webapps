@@ -100,6 +100,18 @@ check("shortcutFromDesktopText is absent by default", W.shortcutFromDesktopText(
 check("shortcutFromDesktopText handles missing text", W.shortcutFromDesktopText() === "")
 check("shortcutFromDesktopText ignores an unparseable value", W.shortcutFromDesktopText("X-Omarchy-Shortcut=SUPER SHIFT\n") === "")
 
+check("shortcutConflicts flags a shared combo", (function () {
+  var c = W.shortcutConflicts({ A: "SUPER + I", B: "SUPER + I", C: "SUPER + L" })
+  return c.A === true && c.B === true && !c.C
+})())
+check("shortcutConflicts flags no one when combos differ", Object.keys(W.shortcutConflicts({ A: "SUPER + I", B: "SUPER + L" })).length === 0)
+check("shortcutConflicts ignores empty combos", Object.keys(W.shortcutConflicts({ A: "", B: "" })).length === 0)
+check("shortcutConflicts handles no input", Object.keys(W.shortcutConflicts()).length === 0)
+check("shortcutConflicts handles a three-way collision", (function () {
+  var c = W.shortcutConflicts({ A: "SUPER + I", B: "SUPER + I", C: "SUPER + I" })
+  return c.A === true && c.B === true && c.C === true
+})())
+
 section("Settings merge")
 check("merge replaces the patched key", W.mergeSettings({ hiddenApps: ["X"], showSearch: true }, { hiddenApps: ["Y"], id: "ghost" }).hiddenApps.join() === "Y")
 check("merge preserves unrelated keys", W.mergeSettings({ hiddenApps: ["X"], showSearch: true }, { hiddenApps: ["Y"] }).showSearch === true)

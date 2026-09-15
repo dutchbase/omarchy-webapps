@@ -55,6 +55,11 @@ writes `X-Omarchy-Shortcut=` into the `.desktop` file (by hand, or a separate
 tool) is picked up automatically; the panel re-reads the file on change while
 it's open.
 
+Nothing stops two web apps from ending up with the same combo, and Hyprland
+doesn't reject a duplicate bind — it fires every dispatcher on that key, so
+both would try to launch. If that happens, both rows show the shortcut in a
+warning color, and hovering either one explains why.
+
 ## Where the setting lives
 
 The picker writes a `hiddenApps` list to the widget's entry in
