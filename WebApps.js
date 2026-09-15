@@ -166,35 +166,51 @@ function pruneHidden(hiddenIds, apps) {
   return out
 }
 
-// Mirrors the bash `canonical_combo` in omarchy-webapp-shortcut: modifiers in
-// a fixed order, "+" or bare spaces between tokens, last non-modifier token
-// wins as the key. Returns "" when no key token is present.
-function canonicalCombo(raw) {
-  var tokens = String(raw || "").split(/[+\s]+/).filter(function (t) { return t.length > 0 })
-  var seen = {}
-  var key = ""
-  for (var i = 0; i < tokens.length; i++) {
-    var up = tokens[i].toUpperCase()
-    if (up === "SUPER" || up === "WIN" || up === "MOD") seen.SUPER = true
-    else if (up === "CTRL" || up === "CONTROL") seen.CTRL = true
-    else if (up === "ALT" || up === "MOD1") seen.ALT = true
-    else if (up === "SHIFT") seen.SHIFT = true
-    else key = up
-  }
-  if (!key) return ""
-  var mods = ["SUPER", "CTRL", "ALT", "SHIFT"]
+// Hyprland's own modmask bits (WLR_MODIFIER_*): SHIFT=1, CTRL=4, ALT=8,
+// SUPER=64. Fixed display order regardless of bit order.
+var MODMASK = { SUPER: 64, CTRL: 4, ALT: 8, SHIFT: 1 }
+var MOD_ORDER = ["SUPER", "CTRL", "ALT", "SHIFT"]
+
+// Formats one `hyprctl binds -j` row into a combo string, e.g. "SUPER + SHIFT
+// + K". Returns "" for a row with no key (shouldn't happen in practice).
+function comboFromBind(bind) {
+  if (!bind || !bind.key) return ""
+  var mask = Number(bind.modmask) || 0
   var out = ""
-  for (var j = 0; j < mods.length; j++) if (seen[mods[j]]) out += mods[j] + " + "
-  return out + key
+  for (var i = 0; i < MOD_ORDER.length; i++) {
+    if (mask & MODMASK[MOD_ORDER[i]]) out += MOD_ORDER[i] + " + "
+  }
+  return out + String(bind.key).toUpperCase()
 }
 
-// Reads the `X-Omarchy-Shortcut=` line a raw .desktop file may carry (written
-// by the separate omarchy-webapp-shortcut tool) and canonicalizes it for
-// display. Returns "" when the key is absent or unparseable.
-function shortcutFromDesktopText(text) {
-  var m = String(text || "").match(/^X-Omarchy-Shortcut=(.*)$/m)
-  if (!m) return ""
-  return canonicalCombo(m[1])
+// Finds a live Hyprland bind for a web app by matching its display name
+// against a bind's `description` — the one thing every source that assigns
+// shortcuts in this ecosystem (Omarchy's preinstalled webapp bindings, the
+// keysmith plugin, hand-written o.bind calls) sets to the app's name. Returns
+// "" when no bind's description matches; best-effort, not exact — a renamed
+// bind or an app whose name isn't used verbatim in it won't be found.
+function shortcutForApp(binds, appName) {
+  var list = binds || []
+  var name = String(appName || "")
+  if (!name) return ""
+  for (var i = 0; i < list.length; i++) {
+    if (list[i] && list[i].description === name) return comboFromBind(list[i])
+  }
+  return ""
+}
+
+// Builds the id -> combo map the panel displays and checks for conflicts
+// against, from one `hyprctl binds -j` snapshot.
+function shortcutsForApps(binds, apps) {
+  var list = apps || []
+  var map = {}
+  for (var i = 0; i < list.length; i++) {
+    var app = list[i]
+    if (!app) continue
+    var combo = shortcutForApp(binds, app.name)
+    if (combo) map[app.id] = combo
+  }
+  return map
 }
 
 // Nothing here writes X-Omarchy-Shortcut=, so two web apps can independently
@@ -238,8 +254,9 @@ if (typeof module !== "undefined" && module.exports) {
     toggleHidden: toggleHidden,
     setAllHidden: setAllHidden,
     pruneHidden: pruneHidden,
-    canonicalCombo: canonicalCombo,
-    shortcutFromDesktopText: shortcutFromDesktopText,
+    comboFromBind: comboFromBind,
+    shortcutForApp: shortcutForApp,
+    shortcutsForApps: shortcutsForApps,
     shortcutConflicts: shortcutConflicts,
     mergeSettings: mergeSettings
   }

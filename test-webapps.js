@@ -87,18 +87,35 @@ check("show all returns empty", W.setAllHidden(apps, false).length === 0)
 check("prune drops stale ids", W.pruneHidden(["X", "Gone"], apps).join() === "X")
 
 section("Shortcut display")
-check("canonicalCombo orders modifiers", W.canonicalCombo("SHIFT SUPER I") === "SUPER + SHIFT + I")
-check("canonicalCombo is case-insensitive", W.canonicalCombo("super+shift+i") === "SUPER + SHIFT + I")
-check("canonicalCombo maps WIN/MOD to SUPER", W.canonicalCombo("WIN A") === "SUPER + A" && W.canonicalCombo("MOD A") === "SUPER + A")
-check("canonicalCombo maps CONTROL to CTRL", W.canonicalCombo("CONTROL A") === "CTRL + A")
-check("canonicalCombo maps MOD1 to ALT", W.canonicalCombo("MOD1 A") === "ALT + A")
-check("canonicalCombo with no key returns empty", W.canonicalCombo("SUPER SHIFT") === "")
-check("canonicalCombo with no input returns empty", W.canonicalCombo("") === "")
-check("canonicalCombo last non-modifier token wins", W.canonicalCombo("SUPER A B") === "SUPER + B")
-check("shortcutFromDesktopText reads the field", W.shortcutFromDesktopText("Name=X\nX-Omarchy-Shortcut=SUPER SHIFT I\nIcon=x") === "SUPER + SHIFT + I")
-check("shortcutFromDesktopText is absent by default", W.shortcutFromDesktopText("Name=X\nExec=omarchy-launch-webapp https://x\n") === "")
-check("shortcutFromDesktopText handles missing text", W.shortcutFromDesktopText() === "")
-check("shortcutFromDesktopText ignores an unparseable value", W.shortcutFromDesktopText("X-Omarchy-Shortcut=SUPER SHIFT\n") === "")
+function bind(over) {
+  var base = { key: "I", modmask: 64, description: "App" }
+  for (var k in over) base[k] = over[k]
+  return base
+}
+check("comboFromBind formats a single modifier", W.comboFromBind(bind({ modmask: 64 })) === "SUPER + I")
+check("comboFromBind orders modifiers SUPER/CTRL/ALT/SHIFT", W.comboFromBind(bind({ modmask: 64 + 1 + 4 + 8 })) === "SUPER + CTRL + ALT + SHIFT + I")
+check("comboFromBind handles no modifiers", W.comboFromBind(bind({ modmask: 0 })) === "I")
+check("comboFromBind uppercases the key", W.comboFromBind(bind({ key: "return", modmask: 64 })) === "SUPER + RETURN")
+check("comboFromBind handles a missing bind", W.comboFromBind(null) === "")
+check("comboFromBind handles a keyless bind", W.comboFromBind({ modmask: 64 }) === "")
+
+var binds = [
+  bind({ key: "K", modmask: 64 + 1, description: "Apple Music" }),
+  bind({ key: "RETURN", modmask: 64 + 1, description: "Browser" }),
+  bind({ key: "B", modmask: 64 + 1, description: "Browser" })
+]
+check("shortcutForApp matches by exact description", W.shortcutForApp(binds, "Apple Music") === "SUPER + SHIFT + K")
+check("shortcutForApp returns empty for no match", W.shortcutForApp(binds, "Discord") === "")
+check("shortcutForApp returns empty for no name", W.shortcutForApp(binds, "") === "")
+check("shortcutForApp handles no binds", W.shortcutForApp(null, "Apple Music") === "")
+check("shortcutForApp takes the first of duplicate descriptions", W.shortcutForApp(binds, "Browser") === "SUPER + SHIFT + RETURN")
+
+var shortcutApps = [{ id: "am", name: "Apple Music" }, { id: "disc", name: "Discord" }]
+check("shortcutsForApps maps only apps with a live bind", (function () {
+  var m = W.shortcutsForApps(binds, shortcutApps)
+  return m.am === "SUPER + SHIFT + K" && m.disc === undefined
+})())
+check("shortcutsForApps handles no apps", Object.keys(W.shortcutsForApps(binds, [])).length === 0)
 
 check("shortcutConflicts flags a shared combo", (function () {
   var c = W.shortcutConflicts({ A: "SUPER + I", B: "SUPER + I", C: "SUPER + L" })

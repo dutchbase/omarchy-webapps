@@ -61,18 +61,10 @@ Panel {
   readonly property var listedApps: WebApps.visibleWebApps(allApps, hiddenApps, query)
   readonly property var activeApps: mode === 0 ? listedApps : allApps
 
-  // id -> canonicalized X-Omarchy-Shortcut=, read from each app's .desktop
-  // file by the reader Instantiator below. Reassigned wholesale (never
-  // mutated in place) so bindings that read it stay reactive.
+  // id -> combo string, matched from a `hyprctl binds -j` snapshot against
+  // each app's name (see WebApps.shortcutsForApps). Refreshed each time the
+  // panel opens; reassigned wholesale so bindings that read it stay reactive.
   property var shortcuts: ({})
-
-  function setShortcut(id, combo) {
-    var next = {}
-    for (var k in root.shortcuts) next[k] = root.shortcuts[k]
-    if (combo) next[id] = combo
-    else delete next[id]
-    root.shortcuts = next
-  }
 
   function shortcutTextFor(app) {
     return app ? (root.shortcuts[app.id] || "") : ""
@@ -84,12 +76,28 @@ Panel {
     return app ? root.conflictedShortcutIds[app.id] === true : false
   }
 
+  function refreshShortcuts() { shortcutsProc.running = true }
+
+  Process {
+    id: shortcutsProc
+    command: ["hyprctl", "binds", "-j"]
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        var binds = []
+        try { binds = JSON.parse(text) } catch (e) { binds = [] }
+        root.shortcuts = WebApps.shortcutsForApps(binds, root.allApps)
+      }
+    }
+  }
+
   function open() {
     root.mode = 0
     root.query = ""
     root.cursor = 0
     root.entryRevision++
     root.controller.show()
+    root.refreshShortcuts()
     if (root.bar && typeof root.bar.requestPopout === "function") root.bar.requestPopout(root.barIdentity)
     Qt.callLater(function () { if (keyCatcher) keyCatcher.forceActiveFocus() })
   }
@@ -154,15 +162,6 @@ Panel {
       root.bar.shell.updateEntryInline(root.moduleName, entry)
   }
 
-  readonly property string homeDir: Quickshell.env("HOME")
-
-  // Path of the .desktop file a web app was normalized from. Web apps this
-  // panel lists always come from ~/.local/share/applications (see README),
-  // so the shortcut lookup only ever needs to read there.
-  function desktopFilePath(id) {
-    return root.homeDir + "/.local/share/applications/" + id + ".desktop"
-  }
-
   function showAll() { root.persistHidden([]) }
   function hideAll() { root.persistHidden(WebApps.setAllHidden(root.allApps, true)) }
 
@@ -193,53 +192,9 @@ Panel {
     function onValuesChanged() { root.entryRevision++ }
   }
 
-  // One FileView per known app, reading its .desktop file for a shortcut.
-  // Lives at the panel root (not per row) so shortcutTextFor/isShortcutConflict
-  // see every app, including ones hidden from the launcher list.
-  Instantiator {
-    model: root.allApps
-    delegate: QtObject {
-      id: shortcutReader
-      required property var modelData
-
-      property FileView file: FileView {
-        path: root.desktopFilePath(shortcutReader.modelData.id)
-        watchChanges: true
-        printErrors: false
-        onFileChanged: reload()
-        onLoaded: root.setShortcut(shortcutReader.modelData.id, WebApps.shortcutFromDesktopText(text()))
-        onLoadFailed: root.setShortcut(shortcutReader.modelData.id, "")
-      }
-
-      // The first read can race shell/plugin startup (same class of race the
-      // weather panel's locationFile works around) and land empty even
-      // though the .desktop file already has the field. One delayed reload
-      // self-corrects; a first read that was already fine is a no-op, since
-      // identical content sets the same shortcut again.
-      property Timer settleTimer: Timer {
-        interval: 1500
-        running: true
-        onTriggered: shortcutReader.file.reload()
-      }
-    }
-  }
-
   onAllAppsChanged: {
     var pruned = WebApps.pruneHidden(root.hiddenApps, root.allApps)
     if (pruned.length !== root.hiddenApps.length) root.persistHidden(pruned)
-
-    // Drop shortcuts for apps that no longer exist — an uninstalled app's
-    // stale entry would otherwise keep flagging a real conflict that isn't
-    // one anymore.
-    var present = {}
-    for (var i = 0; i < root.allApps.length; i++) present[root.allApps[i].id] = true
-    var nextShortcuts = {}
-    var shortcutsChanged = false
-    for (var id in root.shortcuts) {
-      if (present[id]) nextShortcuts[id] = root.shortcuts[id]
-      else shortcutsChanged = true
-    }
-    if (shortcutsChanged) root.shortcuts = nextShortcuts
   }
 
   onActiveAppsChanged: {
