@@ -53,10 +53,7 @@ Panel {
     entryRevision
     return WebApps.collectWebApps(DesktopEntries.applications.values)
   }
-  readonly property var hiddenApps: {
-    var value = setting("hiddenApps", [])
-    return Array.isArray(value) ? value : []
-  }
+  readonly property var hiddenApps: WebApps.toStringArray(setting("hiddenApps", []))
   readonly property var listedApps: WebApps.visibleWebApps(allApps, hiddenApps, query)
   readonly property var activeApps: mode === 0 ? listedApps : allApps
 
@@ -158,11 +155,6 @@ Panel {
   Connections {
     target: DesktopEntries.applications
     function onValuesChanged() { root.entryRevision++ }
-  }
-
-  onAllAppsChanged: {
-    var pruned = WebApps.pruneHidden(root.hiddenApps, root.allApps)
-    if (pruned.length !== root.hiddenApps.length) root.persistHidden(pruned)
   }
 
   onActiveAppsChanged: {

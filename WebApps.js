@@ -106,10 +106,20 @@ function collectWebApps(entries) {
   return out
 }
 
+// Coerces a settings value into a real JS string array. shell.json values reach
+// QML as sequences (QVariantList), for which Array.isArray() is false, so a
+// length/index walk is used instead of any Array.isArray()/instanceof check.
+function toStringArray(value) {
+  var out = []
+  if (!value || typeof value === "string" || typeof value.length !== "number") return out
+  for (var i = 0; i < value.length; i++) out.push(String(value[i]))
+  return out
+}
+
 function hiddenSet(hiddenIds) {
   var set = {}
-  var list = hiddenIds || []
-  for (var i = 0; i < list.length; i++) set[String(list[i])] = true
+  var list = toStringArray(hiddenIds)
+  for (var i = 0; i < list.length; i++) set[list[i]] = true
   return set
 }
 
@@ -138,8 +148,9 @@ function visibleCount(apps, hiddenIds) {
 
 function toggleHidden(hiddenIds, id) {
   var target = String(id || "")
-  if (!target) return (hiddenIds || []).map(String).sort()
-  var hidden = hiddenSet(hiddenIds)
+  var current = toStringArray(hiddenIds)
+  if (!target) return current.sort()
+  var hidden = hiddenSet(current)
   if (hidden[target]) delete hidden[target]
   else hidden[target] = true
   return Object.keys(hidden).sort()
@@ -151,19 +162,6 @@ function setAllHidden(apps, hide) {
   var ids = []
   for (var i = 0; i < list.length; i++) if (list[i] && list[i].id) ids.push(String(list[i].id))
   return ids.sort()
-}
-
-function pruneHidden(hiddenIds, apps) {
-  var present = {}
-  var list = apps || []
-  for (var i = 0; i < list.length; i++) if (list[i] && list[i].id) present[list[i].id] = true
-  var source = hiddenIds || []
-  var out = []
-  for (var j = 0; j < source.length; j++) {
-    var id = String(source[j])
-    if (present[id]) out.push(id)
-  }
-  return out
 }
 
 function mergeSettings(current, changes) {
@@ -180,13 +178,13 @@ if (typeof module !== "undefined" && module.exports) {
     isWebAppExec: isWebAppExec,
     normalizeEntry: normalizeEntry,
     collectWebApps: collectWebApps,
+    toStringArray: toStringArray,
     hiddenSet: hiddenSet,
     matchesQuery: matchesQuery,
     visibleWebApps: visibleWebApps,
     visibleCount: visibleCount,
     toggleHidden: toggleHidden,
     setAllHidden: setAllHidden,
-    pruneHidden: pruneHidden,
     mergeSettings: mergeSettings
   }
 }

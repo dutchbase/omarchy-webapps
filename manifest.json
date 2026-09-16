@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "dutchbase.webapps",
   "name": "Web Apps",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "dutchbase",
   "license": "MIT",
   "description": "Launch your installed web apps from a themed Omarchy bar panel, with an in-panel picker for which apps to show.",

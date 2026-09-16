@@ -84,7 +84,17 @@ check("toggle switches on unseen id", W.toggleHidden(["X"], "Z").join() === "X,Z
 check("toggle empty id is a no-op", W.toggleHidden(["X"], "").join() === "X")
 check("hide all returns every id", W.setAllHidden(apps, true).length === 3)
 check("show all returns empty", W.setAllHidden(apps, false).length === 0)
-check("prune drops stale ids", W.pruneHidden(["X", "Gone"], apps).join() === "X")
+
+section("Settings coercion (shell.json sequences)")
+check("toStringArray copies a JS array", W.toStringArray(["X", "Y"]).join() === "X,Y")
+check("toStringArray coerces an array-like", W.toStringArray({ 0: "X", 1: "Y", length: 2 }).join() === "X,Y")
+check("toStringArray stringifies entries", W.toStringArray([1, "Y"]).join() === "1,Y")
+check("toStringArray returns [] for null", W.toStringArray(null).length === 0)
+check("toStringArray returns [] for a string", W.toStringArray("X").length === 0)
+check("toStringArray returns [] for a plain object", W.toStringArray({}).length === 0)
+check("visibleWebApps reads an array-like hidden list", W.visibleWebApps(apps, { 0: "X", length: 1 }, "").length === 2)
+check("toggleHidden preserves an array-like selection", W.toggleHidden({ 0: "X", length: 1 }, "Y").join() === "X,Y")
+check("toggleHidden removes from an array-like selection", W.toggleHidden({ 0: "X", length: 1 }, "X").length === 0)
 
 section("Settings merge")
 check("merge replaces the patched key", W.mergeSettings({ hiddenApps: ["X"], showSearch: true }, { hiddenApps: ["Y"], id: "ghost" }).hiddenApps.join() === "Y")
